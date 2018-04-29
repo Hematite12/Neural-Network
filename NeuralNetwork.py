@@ -3,7 +3,7 @@ import random
 import math
 
 class Layer():
-    def __init__(self, type, prevNeurons, numNeurons, weights):
+    def __init__(self, type, prevNeurons, numNeurons):
         self.type = type
         self.prevNeurons = prevNeurons
         self.numNeurons = numNeurons
@@ -11,19 +11,12 @@ class Layer():
         self.biases = np.matrix([random.random() for i in range(numNeurons)]).transpose()
 
 class NeuralNetwork():
-    def __init__(self, inputSize, outputSize, numHidden, hiddenSize, learningRate):
+    def __init__(self, inputSize, learningRate, neurL):
         self.inputSize = inputSize
-        self.outputSize = outputSize
-        self.numHidden = numHidden
-        self.hiddenSize = hiddenSize
         self.learningRate = learningRate
-        self.outputLayer = np.matrix([[random.random() for j in range(hiddenSize)] for i in range(outputSize)])
-        firstHiddenLayer = [np.matrix([[random.random() for j in range(inputSize)] for i in range(hiddenSize)])]
-        subsequentHiddenLayers = [np.matrix([[random.random() for j in range(hiddenSize)] for k in range(hiddenSize)]) for i in range(1, numHidden)]
-        self.hiddenLayers = firstHiddenLayer + subsequentHiddenLayers
-        outputBias = [np.matrix([random.random() for j in range(outputSize)]).transpose()]
-        hiddenBiases = [np.matrix([random.random() for j in range(hiddenSize)]).transpose() for i in range(1, numHidden)]
-        self.biases = outputBias + hiddenBiases
+        self.layers = [Layer("standard", inputSize, neurL[0])]
+        for i in range(1, len(neurL)):
+            self.layers.append(Layer("standard", neurL[i-1], neurL[i]))
     
     @staticmethod
     def sigmoid(x):
@@ -35,43 +28,42 @@ class NeuralNetwork():
     
     def feedForwardHelper(self, inputs):
         actFunc = np.vectorize(NeuralNetwork.sigmoid)
-        outputs = inputs
-        outputsL = []
-        for layer in self.hiddenLayers + [self.outputLayer]:
-            outputs = actFunc(layer * outputs)
-            outputsL.append(outputs)
+        outputsL = [actFunc(self.layers[0].weights * inputs + self.layers[0].biases)]
+        for layer in self.layers[1:]:
+            outputsL.append(actFunc(layer.weights * outputsL[-1] + layer.biases))
         return outputsL
     
     def feedForward(self, inputs):
         return self.feedForwardHelper(np.matrix(inputs).transpose())[-1]
     
-    def train(self, inputs, expOutputs):
-        inputs = np.matrix(inputs).transpose()
-        expOutputs = np.matrix(expOutputs).transpose()
+    def train(self, inputsL, expOutputsL = []):
+        if expOutputsL != []:
+            inputs = np.matrix(inputsL).transpose()
+            expOutputs = np.matrix(expOutputsL).transpose()
+        else:
+            inputs = np.matrix(inputsL[0]).transpose()
+            expOutputs = np.matrix(inputsL[1]).transpose()
+        dsigFunc = np.vectorize(NeuralNetwork.dsigmoid)
         
         outputsL = self.feedForwardHelper(inputs)
-        outputError = expOutputs - outputsL[-1]
-        dsigFunc = np.vectorize(NeuralNetwork.dsigmoid)
+        error = expOutputs - outputsL[-1]
 
-        gradient = self.learningRate * outputError * dsigFunc(outputsL[-1])
-        deltas = gradient * outputsL[-2].transpose()
-        self.outputLayer += deltas
-        self.biases[-1] += gradient
-
-        prevLayer = self.outputLayer
-        prevError = outputError
-        for i in range(self.numHidden):
-            prevError = prevLayer.transpose() * prevError
-
-            gradient = self.learningRate * prevError * dsigFunc(outputsL[-i-1])
-            deltas = gradient * outputsL[-i-2].transpose()
-            self.hiddenLayers[-i-1] += deltas
-            print(self.biases[-1-1])
-            print(gradient)
-            self.biases[-i-1] += gradient
-
-            prevLayer = self.hiddenLayers[-i-1]
+        for layerIndex in range(len(self.layers)-1, -1, -1):
+            gradient = self.learningRate * error.transpose() * dsigFunc(outputsL[layerIndex])
+            deltas = gradient * outputsL[layerIndex-1].transpose()
+            self.layers[layerIndex].weights += deltas
+            self.layers[layerIndex].biases += gradient
+            error = self.layers[layerIndex].weights.transpose() * error
 
 if __name__ == "__main__":
-    n = NeuralNetwork(2, 1, 3, 4, .01)
-    n.train([0, 1], [1])
+    n = NeuralNetwork(2, .2, [2, 1])
+    examples = [([0, 0], [0]),
+                ([0, 1], [1]),
+                ([1, 0], [1]),
+                ([1, 1], [0])]
+    for i in range(10000):
+        n.train(random.choice(examples))
+    print(n.feedForward([0, 0]))
+    print(n.feedForward([0, 1]))
+    print(n.feedForward([1, 0]))
+    print(n.feedForward([1, 1]))
