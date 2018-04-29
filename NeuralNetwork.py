@@ -7,8 +7,9 @@ class Layer():
         self.type = type
         self.prevNeurons = prevNeurons
         self.numNeurons = numNeurons
-        self.weights = np.matrix([[random.random() for j in range(prevNeurons)] for i in range(numNeurons)])
-        self.biases = np.matrix([random.random() for i in range(numNeurons)]).transpose()
+        self.weights = np.matrix([[random.random()-.5 for j in range(prevNeurons)] for i in range(numNeurons)])
+        self.biases = np.matrix([random.random()-.5 for i in range(numNeurons)]).transpose()
+        print(self.weights)
 
 class NeuralNetwork():
     def __init__(self, inputSize, learningRate, neurL):
@@ -28,9 +29,11 @@ class NeuralNetwork():
     
     def feedForwardHelper(self, inputs):
         actFunc = np.vectorize(NeuralNetwork.sigmoid)
-        outputsL = [actFunc(self.layers[0].weights * inputs + self.layers[0].biases)]
-        for layer in self.layers[1:]:
-            outputsL.append(actFunc(layer.weights * outputsL[-1] + layer.biases))
+        currentOutput = inputs
+        outputsL = []
+        for layer in self.layers:
+            currentOutput = actFunc(layer.weights * currentOutput + layer.biases)
+            outputsL.append(currentOutput)
         return outputsL
     
     def feedForward(self, inputs):
@@ -49,19 +52,19 @@ class NeuralNetwork():
         error = expOutputs - outputsL[-1]
 
         for layerIndex in range(len(self.layers)-1, -1, -1):
-            gradient = self.learningRate * error.transpose() * dsigFunc(outputsL[layerIndex])
+            gradient = self.learningRate * np.multiply(error, dsigFunc(outputsL[layerIndex]))
             deltas = gradient * outputsL[layerIndex-1].transpose()
             self.layers[layerIndex].weights += deltas
             self.layers[layerIndex].biases += gradient
             error = self.layers[layerIndex].weights.transpose() * error
 
 if __name__ == "__main__":
-    n = NeuralNetwork(2, .2, [2, 1])
+    n = NeuralNetwork(2, .02, [4, 1])
     examples = [([0, 0], [0]),
                 ([0, 1], [1]),
                 ([1, 0], [1]),
                 ([1, 1], [0])]
-    for i in range(10000):
+    for i in range(3000):
         n.train(random.choice(examples))
     print(n.feedForward([0, 0]))
     print(n.feedForward([0, 1]))
