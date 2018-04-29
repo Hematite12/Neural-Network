@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import math
+import graphics as g
 
 class Layer():
     def __init__(self, type, prevNeurons, numNeurons):
@@ -57,6 +58,34 @@ class NeuralNetwork():
             self.layers[layerIndex].weights += deltas
             self.layers[layerIndex].biases += gradient
             error = self.layers[layerIndex].weights.transpose() * error
+    
+    def show(self, NR):
+        win = g.GraphWin("Neural Network", 800, 400)
+        yPos = 2*NR
+        for i in range(self.inputSize):
+            n = g.Circle(g.Point(2*NR, yPos), NR)
+            n.draw(win)
+            yPos += 4*NR
+        yPos = 2*NR
+        xPos = 12*NR
+        for layer in self.layers:
+            for i in range(layer.numNeurons):
+                n = g.Circle(g.Point(xPos, yPos), NR)
+                n.draw(win)
+                prevX = xPos - 10*NR
+                prevY = 2*NR
+                for j in range(layer.prevNeurons):
+                    l = g.Line(g.Point(prevX+NR, prevY), g.Point(xPos-NR, yPos))
+                    l.draw(win)
+                    textLoc = g.Point((prevX+xPos)/2, (prevY + yPos)/2)
+                    t = g.Text(textLoc, str(round(layer.weights.item((i, j)), 3)))
+                    t.draw(win)
+                    prevY += 4*NR
+                yPos += 4*NR
+            yPos = 2*NR
+            xPos += 10*NR
+        win.getMouse()
+        win.close()
 
 if __name__ == "__main__":
     n = NeuralNetwork(2, .02, [4, 1])
@@ -64,9 +93,11 @@ if __name__ == "__main__":
                 ([0, 1], [1]),
                 ([1, 0], [1]),
                 ([1, 1], [0])]
-    for i in range(3000):
-        n.train(random.choice(examples))
-    print(n.feedForward([0, 0]))
-    print(n.feedForward([0, 1]))
-    print(n.feedForward([1, 0]))
-    print(n.feedForward([1, 1]))
+    for x in range(4):
+        for i in range(3000):
+            n.train(random.choice(examples))
+        print(n.feedForward([0, 0]))
+        print(n.feedForward([0, 1]))
+        print(n.feedForward([1, 0]))
+        print(n.feedForward([1, 1]))
+        n.show(20)
