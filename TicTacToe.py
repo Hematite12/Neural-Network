@@ -53,4 +53,4 @@ if __name__ == "__main__":
         state, gameIsOver = t.decide(10000)
         t.printBoard()
 
-#testing
+#testing2
