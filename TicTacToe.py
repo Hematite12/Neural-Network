@@ -52,3 +52,5 @@ if __name__ == "__main__":
     while not gameIsOver:
         state, gameIsOver = t.decide(10000)
         t.printBoard()
+
+#testing
