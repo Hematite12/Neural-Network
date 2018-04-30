@@ -8,8 +8,8 @@ class Layer():
         self.type = type
         self.prevNeurons = prevNeurons
         self.numNeurons = numNeurons
-        self.weights = np.matrix([[random.random()*2-.5 for j in range(prevNeurons)] for i in range(numNeurons)])
-        self.biases = np.matrix([random.random()*2-.5 for i in range(numNeurons)]).transpose()
+        self.weights = np.matrix([[random.random()*2-1 for j in range(prevNeurons)] for i in range(numNeurons)])
+        self.biases = np.matrix([random.random()*2-1 for i in range(numNeurons)]).transpose()
 
 class NeuralNetwork():
     def __init__(self, inputSize, learningRate, neurL):
