@@ -36,10 +36,19 @@ class TicTacToeTree(MonteCarloTree):
                 return moveColor
             if state[2][0]==moveColor and state[0][2]==moveColor:
                 return moveColor
+        isDraw = True
+        for i in range(3):
+            for j in range(3):
+                if state[i][j]==None:
+                    isDraw = False
+        if isDraw:
+            return "draw"
         return None
 
 if __name__ == "__main__":
     t = TicTacToeTree()
     t.printBoard()
-    t.decide()
-    t.printBoard()
+    gameIsOver = False
+    while not gameIsOver:
+        state, gameIsOver = t.decide(10000)
+        t.printBoard()

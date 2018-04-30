@@ -13,7 +13,8 @@ def indices(lst, element):
         result.append(offset)
 
 class Node:
-    def __init__(self, color, state, moves, parent=None):
+    def __init__(self, tree, color, state, moves, parent=None):
+        self.tree = tree
         self.color = color # True or False
         self.parent = parent
         self.wins = 0
@@ -21,7 +22,7 @@ class Node:
         self.state = state
         self.moves = moves
         self.children = [None for i in moves]
-        self.winner = MonteCarloTree.getWinner(self.state, self.color)
+        self.winner = self.tree.getWinner(self.state, self.color)
     
     def isLeaf(self):
         return self.children == []
@@ -37,15 +38,17 @@ class Node:
     
     def expand(self):
         index = random.choice(indices(self.children, None))
-        newState = MonteCarloTree.stateTransition(self.state, self.moves[index], not self.color)
-        newNode = Node(not self.color, newState, MonteCarloTree.getMoves(newState, not self.color), self)
+        newState = self.tree.stateTransition(self.state, self.moves[index], not self.color)
+        newMoves = self.tree.getMoves(newState, not self.color)
+        newNode = Node(self.tree, not self.color, newState, newMoves, self)
         self.children[index] = newNode
         return newNode
 
 class MonteCarloTree(ABC):
-    def __init__(self):
-        initState = self.getInitialState()
-        self.root = Node(True, initState, self.getMoves(initState, True))
+    def __init__(self, initState = []):
+        if initState == []:
+            initState = self.getInitialState()
+        self.root = Node(self, True, initState, self.getMoves(initState, True))
     
     @staticmethod
     @abstractmethod
@@ -83,13 +86,19 @@ class MonteCarloTree(ABC):
     def getScore(self, n):
         return (n.wins/n.games)+math.sqrt(2)*math.sqrt(math.log(self.root.games)/n.games)
     
-    def iteration(self):
+    def treePolicy(self):
         currentNode = self.root
-        while currentNode.isExpanded():
-            scores = [self.getScore(n) for n in currentNode.children]
-            currentNode = currentNode.children[scores.index(max(scores))]
-        newChild = currentNode.expand()
-        self.playout(newChild)
+        while not currentNode.isTerminal():
+            if currentNode.isExpanded():
+                scores = [self.getScore(n) for n in currentNode.children]
+                currentNode = currentNode.children[scores.index(max(scores))]
+            else:
+                return currentNode.expand()
+        return currentNode
+    
+    def iteration(self):
+        selectedNode = self.treePolicy()
+        self.playout(selectedNode)
     
     def chooseMove(self):
         bestChild = self.root.children[0]
@@ -106,7 +115,9 @@ class MonteCarloTree(ABC):
         return self.root.state, gameIsOver
     
     def printBoard(self):
-        print(self.root.state)
+        for row in self.root.state:
+            print(row)
+        print()
     
     def __str__(self):
         rep = str(self.root.wins) + "/" + str(self.root.games) + "\n"
