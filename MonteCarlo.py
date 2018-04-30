@@ -74,7 +74,9 @@ class MonteCarloTree(ABC):
         winner = n.winner
         while n != None:
             n.games += 1
-            if n.color == winner:
+            if winner == "draw":
+                n.wins += .5
+            elif n.color == winner:
                 n.wins += 1
             n = n.parent
     
