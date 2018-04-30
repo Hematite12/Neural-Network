@@ -1,35 +1,64 @@
 import math
 import random
+from abc import ABC, abstractmethod
 
 class Node:
-    def __init__(self, color, state, parent=None):
-        self.color = color # "w" or "b"
+    def __init__(self, color, state, moves, parent=None):
+        self.color = color # True or False
         self.parent = parent
-        self.children = []
         self.wins = 0
         self.games = 0
         self.state = state
+        self.moves = moves
+        self.children = [None for i in moves]
     
     def isLeaf(self):
         return self.children == []
+    
+    def isExpanded(self):
+        for i in self.children:
+            if i == None:
+                return False
+        return True
+    
+    def expand(self):
+        index = self.children.index(None)
+        newNode = Node(not self.color, MonteCarloTree.stateTransition(self.state, self.moves[index]), 
+            MonteCarloTree.getMoves(self.state), self)
+        self.children[index] = newNode
+        return newNode
 
-class MonteCarloTree:
+class MonteCarloTree(ABC):
     def __init__(self):
-        self.root = Node("w", self.getInitialState())
+        initState = self.getInitialState()
+        self.root = Node(True, initState, self.getMoves(initState))
     
-    def getInitialState(self):
-        return []
+    @staticmethod
+    @abstractmethod
+    def getInitialState():
+        pass
     
-    def getScore(self, n):
-        return (n.wins/n.games)+math.sqrt(2)*math.sqrt(math.log(self.root.games)/n.games)
+    @staticmethod
+    @abstractmethod
+    def getMoves(state):
+        pass
+    
+    @staticmethod
+    @abstractmethod
+    def stateTransition(state, move):
+        pass
     
     def playout(self, n):
         pass
     
-    def round(self):
+    def getScore(self, n):
+        return (n.wins/n.games)+math.sqrt(2)*math.sqrt(math.log(self.root.games)/n.games)
+    
+    def iteration(self):
         self.root.games += 1
         currentNode = self.root
-        while not currentNode.isLeaf():
+        while currentNode.isExpanded():
             scores = [self.getScore(n) for n in currentNode.children]
             currentNode = currentNode.children[scores.index(max(scores))]
-        self.playout(currentNode)
+        newChild = currentNode.expand()
+        self.playout(newChild)
