@@ -22,3 +22,24 @@ class TicTacToeTree(MonteCarloTree):
         newState = copy.deepcopy(state)
         newState[move[0]][move[1]] = moveColor
         return newState
+    
+    @staticmethod
+    def getWinner(state, moveColor):
+        for i in range(3):
+            row = state[i]
+            if row[0]==moveColor and row[1]==moveColor and row[2]==moveColor:
+                return moveColor
+            if state[0][i]==moveColor and state[1][i]==moveColor and state[2][i]==moveColor:
+                return moveColor
+        if state[1][1]==moveColor:
+            if state[0][0]==moveColor and state[2][2]==moveColor:
+                return moveColor
+            if state[2][0]==moveColor and state[0][2]==moveColor:
+                return moveColor
+        return None
+
+if __name__ == "__main__":
+    t = TicTacToeTree()
+    t.printBoard()
+    t.decide()
+    t.printBoard()
