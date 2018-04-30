@@ -23,15 +23,15 @@ class Node:
     
     def expand(self):
         index = self.children.index(None)
-        newNode = Node(not self.color, MonteCarloTree.stateTransition(self.state, self.moves[index]), 
-            MonteCarloTree.getMoves(self.state), self)
+        newState = MonteCarloTree.stateTransition(self.state, self.moves[index], not self.color)
+        newNode = Node(not self.color, newState, MonteCarloTree.getMoves(newState, not self.color), self)
         self.children[index] = newNode
         return newNode
 
 class MonteCarloTree(ABC):
     def __init__(self):
         initState = self.getInitialState()
-        self.root = Node(True, initState, self.getMoves(initState))
+        self.root = Node(True, initState, self.getMoves(initState, True))
     
     @staticmethod
     @abstractmethod
@@ -40,12 +40,12 @@ class MonteCarloTree(ABC):
     
     @staticmethod
     @abstractmethod
-    def getMoves(state):
+    def getMoves(state, moveColor):
         pass
     
     @staticmethod
     @abstractmethod
-    def stateTransition(state, move):
+    def stateTransition(state, move, moveColor):
         pass
     
     def playout(self, n):
