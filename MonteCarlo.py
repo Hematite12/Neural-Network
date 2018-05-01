@@ -82,7 +82,16 @@ class MonteCarloTree(ABC):
     
     def playout(self, n):
         while not n.isTerminal():
-            n = n.expand()
+            if not n.isExpanded():
+                n = n.expand()
+            else:
+                print(n.isTerminal())
+                print(n.isExpanded())
+                print(n.children)
+                for row in n.state:
+                    print(row)
+                print()
+                n = random.choice(n.children)
         self.backPropagate(n)
     
     def getScore(self, n):
@@ -110,12 +119,13 @@ class MonteCarloTree(ABC):
         self.root = bestChild
         return self.root.isTerminal()
     
-    def decide(self, numIterations=100):
+    def decide(self, numIterations=10000):
         for i in range(numIterations):
             self.iteration()
         gameIsOver = self.chooseMove()
         return self.root.state, gameIsOver
     
+    @abstractmethod
     def printBoard(self):
         for row in self.root.state:
             print(row)
