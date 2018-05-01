@@ -37,7 +37,7 @@ class NeuralNetwork():
         return outputsL
     
     def feedForward(self, inputs):
-        return self.feedForwardHelper(np.matrix(inputs).transpose())[-1]
+        return self.feedForwardHelper(np.matrix(inputs).transpose())[-1].tolist()[0]
     
     def train(self, inputsL, expOutputsL = []):
         if expOutputsL != []:
@@ -61,6 +61,10 @@ class NeuralNetwork():
                 deltas = gradient * inputs.transpose()
             self.layers[layerIndex].weights += deltas
             self.layers[layerIndex].biases += gradient
+    
+    def trainMultiple(self, examples, numTrain):
+        for i in range(numTrain):
+            self.train(random.choice(examples))
     
     def show(self, NR = 25):
         win = g.GraphWin("Neural Network", 800, 400)

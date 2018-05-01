@@ -44,6 +44,17 @@ class TicTacToeTree(MonteCarloTree):
         if isDraw:
             return "draw"
         return None
+    
+    def printBoard(self):
+        for row in self.root.state:
+            rowString = "|"
+            for char in row:
+                if char == None: rowString += " "
+                elif char: rowString += "X"
+                else: rowString += "O"
+            rowString.encode("utf-8").decode("ascii")
+            print(rowString + "|")
+        print()
 
 if __name__ == "__main__":
     t = TicTacToeTree()

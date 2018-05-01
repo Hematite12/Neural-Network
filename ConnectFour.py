@@ -60,6 +60,7 @@ class ConnectFourTree(MonteCarloTree):
                 if char == None: rowString += " "
                 elif char: rowString += "X"
                 else: rowString += "O"
+            rowString.encode("utf-8").decode("ascii")
             print(rowString + "|")
         print()
 
