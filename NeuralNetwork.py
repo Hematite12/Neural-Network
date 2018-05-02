@@ -37,7 +37,8 @@ class NeuralNetwork():
         return outputsL
     
     def feedForward(self, inputs):
-        return self.feedForwardHelper(np.matrix(inputs).transpose())[-1].tolist()[0]
+        output = self.feedForwardHelper(np.matrix(inputs).transpose())[-1].tolist()
+        return [i[0] for i in output]
     
     def train(self, inputsL, expOutputsL = []):
         if expOutputsL != []:
