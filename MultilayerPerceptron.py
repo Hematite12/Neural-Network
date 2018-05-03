@@ -4,20 +4,19 @@ import math
 import graphics as g
 
 class Layer():
-    def __init__(self, type, prevNeurons, numNeurons):
-        self.type = type
+    def __init__(self, prevNeurons, numNeurons):
         self.prevNeurons = prevNeurons
         self.numNeurons = numNeurons
         self.weights = np.matrix([[random.random()*2-1 for j in range(prevNeurons)] for i in range(numNeurons)])
         self.biases = np.matrix([random.random()*2-1 for i in range(numNeurons)]).transpose()
 
-class NeuralNetwork():
+class MultilayerPerceptron():
     def __init__(self, inputSize, learningRate, neurL):
         self.inputSize = inputSize
         self.learningRate = learningRate
-        self.layers = [Layer("standard", inputSize, neurL[0])]
+        self.layers = [Layer(inputSize, neurL[0])]
         for i in range(1, len(neurL)):
-            self.layers.append(Layer("standard", neurL[i-1], neurL[i]))
+            self.layers.append(Layer(neurL[i-1], neurL[i]))
     
     @staticmethod
     def sigmoid(x):
@@ -28,7 +27,7 @@ class NeuralNetwork():
         return x * (1-x)
     
     def feedForwardHelper(self, inputs):
-        actFunc = np.vectorize(NeuralNetwork.sigmoid)
+        actFunc = np.vectorize(MultilayerPerceptron.sigmoid)
         currentOutput = inputs
         outputsL = []
         for layer in self.layers:
@@ -47,7 +46,7 @@ class NeuralNetwork():
         else:
             inputs = np.matrix(inputsL[0]).transpose()
             expOutputs = np.matrix(inputsL[1]).transpose()
-        dsigFunc = np.vectorize(NeuralNetwork.dsigmoid)
+        dsigFunc = np.vectorize(MultilayerPerceptron.dsigmoid)
         
         outputsL = self.feedForwardHelper(inputs)
         error = expOutputs - outputsL[-1]
@@ -98,7 +97,7 @@ class NeuralNetwork():
         win.close()
 
 if __name__ == "__main__":
-    n = NeuralNetwork(2, .1, [4, 1])
+    n = MultilayerPerceptron(2, .1, [4, 1])
     examples = [([0, 0], [0]),
                 ([0, 1], [1]),
                 ([1, 0], [1]),

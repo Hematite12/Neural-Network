@@ -1,4 +1,4 @@
-from NeuralNetwork import NeuralNetwork
+from MultilayerPerceptron import MultilayerPerceptron
 
 def tripleXORTest():
     examples = [([0, 0, 0], [0]),
@@ -9,7 +9,7 @@ def tripleXORTest():
                 ([1, 1, 0], [0]),
                 ([1, 0, 1], [0]),
                 ([1, 1, 1], [0])]
-    n = NeuralNetwork(3, .1, [8, 8, 8, 1])
+    n = MultilayerPerceptron(3, .1, [8, 8, 8, 1])
     n.trainMultiple(examples, 20000)
     for example in examples:
         output = n.feedForward(example[0])[0]
@@ -45,7 +45,7 @@ def sumTest():
                 for l in range(k+1, 5):
                     exIn = [1 if x==i or x==j or x==k or x==l else 0 for x in range(5)]
                     examples.append((exIn, [0, 0, 0, 0, 1, 0]))
-    n = NeuralNetwork(5, .1, [15, 15, 15, 6])
+    n = MultilayerPerceptron(5, .1, [15, 15, 15, 6])
     n.trainMultiple(examples, 100000)
     for example in examples:
         output = n.feedForward(example[0])
