@@ -91,8 +91,14 @@ class ConvNet():
             output = np.append(output, inputMat)
         return output
     
-    @staticmethod
-    def convolute(layer, inputs):
+    def fullyConnectedOperation(self, layer, inputs):
+        if layer.actFunc == "relu":
+            outputs = self.reluFunc(layer.weights * inputs + layer.biases)
+        elif layer.actFunc == "sigmoid":
+            outputs = self.sigFunc(layer.weights * inputs + layer.biases)
+        return outputs
+    
+    def convolute(self, layer, inputs):
         outputs = []
         for inputMat in inputs:
             for i in range(layer.numFeatureMaps):
@@ -112,6 +118,29 @@ class ConvNet():
                 outputs.append(newMat)
         return outputs
     
+    def pool(self, layer, inputs):
+        outputs = []
+        for inputMat in inputs:
+            inputRows = inputMat.shape[0]
+            inputCols = inputMat.shape[1]
+            newMat = np.empty((math.ceil(inputRows/layer.strideSize), math.ceil(inputCols/layer.strideSize)))
+            newMatRow = 0
+            for overallRow in range(0, inputRows, layer.strideSize):
+                newMatCol = 0
+                for overallCol in range(0, inputCols, layer.strideSize):
+                    if layer.actFunc == "max":
+                        maxVal = -1
+                        for row in range(layer.windowRows):
+                            for col in range(layer.windowCols):
+                                newVal = inputMat[overallRow+row, overallCol+col]
+                                if newVal > maxVal: 
+                                    maxVal = newVal
+                        newMat[newMatRow, newMatCol] = maxVal
+                    newMatCol += 1
+                newMatRow += 1
+            outputs.append(newMat)
+        return outputs
+    
     def feedForwardHelper(self, inputs):
         currentInputIsPicture = True
         outputsL = []
@@ -120,12 +149,20 @@ class ConvNet():
                 inputs = ConvNet.flatten(inputs)
                 currentInputIsPicture = False
             if type(layer) is FCLayer:
-                if layer.actFunc == "relu":
-                    inputs = self.reluFunc(layer.weights * inputs + layer.biases)
-                elif layer.actFunc == "sigmoid":
-                    inputs = self.sigFunc(layer.weights * inputs + layer.biases)
+                inputs = self.fullyConnectedOperation(layer, inputs)
             elif type(layer) is ConvLayer:
-
+                inputs = self.convolute(layer, inputs)
+            elif type(layer) is PoolingLayer:
+                inputs = self.pool(layer, inputs)
+            outputsL.append(inputs)
+        return outputsL
+    
+    def feedForward(self, inputs):
+        output = self.feedForwardHelper(np.matrix(inputs).transpose())[-1].tolist()
+        return [i[0] for i in output]
+    
+    def train(self, inputsL, expOutputsL = []):
+        pass
     
     def trainMultiple(self, examples, numTrain):
         for i in range(numTrain):
