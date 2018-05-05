@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import signal
 import random
 import math
 import graphics as g
@@ -32,7 +33,9 @@ class PoolingLayer():
 class ConvNet():
     def __init__(self, inRows, inCols, learningRate=.1, layerTypes=[], layerInputs=[]):
         self.sigFunc = np.vectorize(ConvNet.sigmoid)
+        self.dsigFunc = np.vectorize(ConvNet.dsigmoid)
         self.reluFunc = np.vectorize(ConvNet.relu)
+        self.dreluFunc = np.vectorize(ConvNet.drelu)
         self.inRows = inRows
         self.inCols = inCols
         self.learningRate = learningRate
@@ -97,24 +100,15 @@ class ConvNet():
         elif layer.actFunc == "sigmoid":
             outputs = self.sigFunc(layer.weights * inputs + layer.biases)
         return outputs
-    
-    def convolute(self, layer, inputs):
+        
+    def layerConvolute(self, layer, inputs):
         outputs = []
         for inputMat in inputs:
             for i in range(layer.numFeatureMaps):
-                newMat = np.empty((inputMat.shape[0]-layer.windowRows+1, inputMat.shape[1]-layer.windowCols+1))
-                for overallRow in range(newMat.shape[0]):
-                    for overallCol in range(newMat.shape[1]):
-                        total = 0
-                        for row in range(layer.windowRows):
-                            for col in range(layer.windowCols):
-                                total += inputMat[overallRow, overallCol] * layer.weights[i][row, col]
-                        total = (total/(layer.windowRows*layer.windowCols)) + layer.biases[i]
-                        if layer.actFunc == "relu":
-                            total = self.reluFunc(total)
-                        elif layer.actFunc == "sigmoid":
-                            total = self.sigFunc(total)
-                        newMat[overallRow, overallCol] = total
+                if layer.actFunc == "relu":
+                    newMat = self.reluFunc(signal.convolve2d(layer.weights[i], inputMat, "valid") + layer.biases[i])
+                elif layer.actFunc == "sigmoid":
+                    newMat = self.sigFunc(signal.convolve2d(layer.weights[i], inputMat, "valid") + layer.biases[i])
                 outputs.append(newMat)
         return outputs
     
@@ -151,7 +145,7 @@ class ConvNet():
             if type(layer) is FCLayer:
                 inputs = self.fullyConnectedOperation(layer, inputs)
             elif type(layer) is ConvLayer:
-                inputs = self.convolute(layer, inputs)
+                inputs = self.layerConvolute(layer, inputs)
             elif type(layer) is PoolingLayer:
                 inputs = self.pool(layer, inputs)
             outputsL.append(inputs)
@@ -161,8 +155,37 @@ class ConvNet():
         output = self.feedForwardHelper(np.matrix(inputs).transpose())[-1].tolist()
         return [i[0] for i in output]
     
+    def backpropagate(self, inputs, expOutputs, outputsL):
+        dError = expOutputs - outputsL[-1]
+
+        for layerIndex in range(len(self.layers)-1, -1, -1):
+            if layerIndex != len(self.layers)-1:
+                if type(self.layers[layerIndex]) is FCLayer:
+                    dError = self.layers[layerIndex+1].weights.transpose() * dError
+                elif type(self.layers[layerIndex]) is ConvLayer:
+                    if self.layers[layerIndex].actFunc == "relu":
+                        dError = signal.convolve2d(dError, np.rot90(self.layers[layerIndex+1].weights, 2)*self.dreluFunc(outputsL[layerIndex]))
+                    elif self.layers[layerIndex].actFunc == "sigmoid":
+                        dError = signal.convolve2d(dError, np.rot90(self.layers[layerIndex+1].weights, 2)*self.dsigFunc(outputsL[layerIndex]))
+                elif type(self.layers[layerIndex]) is PoolingLayer:
+                    pass
+            gradient = np.multiply(dError, self.dsigFunc(outputsL[layerIndex])) * self.learningRate
+            if layerIndex-1 >= 0:
+                deltas = gradient * outputsL[layerIndex-1].transpose()
+            else:
+                deltas = gradient * inputs.transpose()
+            self.layers[layerIndex].weights += deltas
+            self.layers[layerIndex].biases += gradient
+    
     def train(self, inputsL, expOutputsL = []):
-        pass
+        if expOutputsL != []:
+            inputs = np.matrix(inputsL).transpose()
+            expOutputs = np.matrix(expOutputsL).transpose()
+        else:
+            inputs = np.matrix(inputsL[0]).transpose()
+            expOutputs = np.matrix(inputsL[1]).transpose()
+        outputsL = self.feedForwardHelper(inputs)
+        self.backpropagate(inputs, expOutputs, outputsL)
     
     def trainMultiple(self, examples, numTrain):
         for i in range(numTrain):

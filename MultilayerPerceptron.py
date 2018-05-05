@@ -49,12 +49,12 @@ class MultilayerPerceptron():
         dsigFunc = np.vectorize(MultilayerPerceptron.dsigmoid)
         
         outputsL = self.feedForwardHelper(inputs)
-        error = expOutputs - outputsL[-1]
+        dError = expOutputs - outputsL[-1]
 
         for layerIndex in range(len(self.layers)-1, -1, -1):
             if layerIndex != len(self.layers)-1:
-                error = self.layers[layerIndex+1].weights.transpose() * error
-            gradient = np.multiply(error, dsigFunc(outputsL[layerIndex])) * self.learningRate
+                dError = self.layers[layerIndex+1].weights.transpose() * dError
+            gradient = np.multiply(dError, dsigFunc(outputsL[layerIndex])) * self.learningRate
             if layerIndex-1 >= 0:
                 deltas = gradient * outputsL[layerIndex-1].transpose()
             else:
