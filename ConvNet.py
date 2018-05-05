@@ -149,22 +149,14 @@ class ConvNet():
     
     @staticmethod
     def flatten(inputs):
-        """Flattens the 2D numpy matrices taken in, and concatenates them
-        
-        Arguments:
-            inputs {list} -- list of 2D numpy matrices
-        
-        Returns:
-            np.Matrix -- a flattened numpy array, the result of flattening
-            and concatenating the input matrices
-        """
-
+        """Flattens the 2D numpy matrices taken in, and concatenates them"""
         output = inputs[0].flatten()
         for inputMat in inputs[1:]:
             output = np.append(output, inputMat)
         return output
     
     def fullyConnectedOperation(self, layer, inputs):
+        """Returns the output of the FCLayer when given the inputs"""
         if layer.actFunc == "relu":
             outputs = self.reluFunc(layer.weights * inputs + layer.biases)
         elif layer.actFunc == "sigmoid":
@@ -172,6 +164,7 @@ class ConvNet():
         return outputs
         
     def layerConvolute(self, layer, inputs):
+        """Returns the output of the ConvLayer when given the inputs"""
         outputs = []
         for inputMat in inputs:
             for i in range(layer.numFeatureMaps):
@@ -183,6 +176,7 @@ class ConvNet():
         return outputs
     
     def pool(self, layer, inputs):
+        """Returns the output of the PoolingLayer when given the inputs"""
         if layer.actFunc == "max":
             layer.forwardSelections = []
         outputs = []
@@ -213,6 +207,7 @@ class ConvNet():
         return outputs
     
     def feedForwardHelper(self, inputs):
+        """Internal feedForward method, returns a list of the outputs at each layer"""
         currentInputIsPicture = True
         outputsL = []
         for layer in self.layers:
@@ -229,10 +224,20 @@ class ConvNet():
         return outputsL
     
     def feedForward(self, inputs):
+        """Feeds the input image through the network and returns the output as a list
+        
+        Arguments:
+            inputs {list} -- 2D list representing an image
+        
+        Returns:
+            list -- the output of the output layer as a list
+        """
+
         output = self.feedForwardHelper(np.matrix(inputs).transpose())[-1].tolist()
         return [i[0] for i in output]
     
     def maxPoolingError(self, dError, prevLayer, poolLayer):
+        """Returns the new dError propagated back from a poolingLayer"""
         newMat = np.zeros(prevLayer.shape)
         loc = 0
         for row in dError.shape[0]:
@@ -242,6 +247,7 @@ class ConvNet():
         return newMat
     
     def backpropagate(self, inputs, expOutputs, outputsL):
+        """Adjusts the weights and biases of the network with gradient descent"""
         # Starting error
         dError = expOutputs - outputsL[-1]
 
@@ -270,6 +276,18 @@ class ConvNet():
                         dError = self.maxPoolingError(dError, self.layers[layerIndex-1], currentLayer)
     
     def train(self, inputsL, expOutputsL = []):
+        """Train the network on a pair of inputs and expected outputs
+        
+        Arguments:
+            inputsL {list} -- 2D list representing an image
+        
+        Keyword Arguments:
+            expOutputsL {list} -- the expected output of the network.
+            If this is not provided, inputsL is assumed to contain
+            the inputs as its first element and the expected output
+            as its second (default: {[]})
+        """
+
         if expOutputsL != []:
             inputs = np.matrix(inputsL).transpose()
             expOutputs = np.matrix(expOutputsL).transpose()
@@ -280,5 +298,14 @@ class ConvNet():
         self.backpropagate(inputs, expOutputs, outputsL)
     
     def trainMultiple(self, examples, numTrain):
+        """Train the network on random choices of input/output pairs
+        in examples, numTrain times
+        
+        Arguments:
+            examples {list} -- a list of input/expected output pairs
+            numTrain {int} -- number of times to sample an example randomly
+            and train the network on it
+        """
+
         for _ in range(numTrain):
             self.train(random.choice(examples))
