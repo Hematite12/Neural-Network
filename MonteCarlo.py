@@ -120,7 +120,7 @@ class MonteCarloTree(ABC):
         return self.root.isTerminal()
     
     def decide(self, numIterations=10000):
-        for i in range(numIterations):
+        for _ in range(numIterations):
             self.iteration()
         gameIsOver = self.chooseMove()
         return self.root.state, gameIsOver

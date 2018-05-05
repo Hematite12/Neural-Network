@@ -63,7 +63,7 @@ class MultilayerPerceptron():
             self.layers[layerIndex].biases += gradient
     
     def trainMultiple(self, examples, numTrain):
-        for i in range(numTrain):
+        for _ in range(numTrain):
             self.train(random.choice(examples))
     
     def show(self, NR = 25):
