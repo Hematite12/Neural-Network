@@ -20,6 +20,7 @@ class FCLayer():
             actFunc {str} -- the layer's activation function: "relu", "sigmoid" (default: {"relu"})
         """
 
+        self.actFunc = actFunc
         self.prevNeurons = prevNeurons
         self.numNeurons = numNeurons
         self.weights = np.matrix([[random.random()*2-1 for j in range(prevNeurons)] for i in range(numNeurons)])
@@ -29,7 +30,7 @@ class ConvLayer():
     """Convolutional layer + activation function, with stride size 1
     """
 
-    def __init__(self, numFeatureMaps=5, windowRows=4, windowCols=4, actFunc="relu"):
+    def __init__(self, currentInputRows, currentInputCols, numFeatureMaps=5, windowRows=4, windowCols=4, actFunc="relu"):
         """ConvLayer constructor
         
         Keyword Arguments:
@@ -39,6 +40,8 @@ class ConvLayer():
             actFunc {str} -- the layer's activation function: "relu", "sigmoid" (default: {"relu"})
         """
 
+        self.outputRows = currentInputRows - windowRows + 1
+        self.outputCols = currentInputCols - windowCols + 1
         self.numFeatureMaps = numFeatureMaps
         self.windowRows = windowRows
         self.windowCols = windowCols
@@ -107,13 +110,13 @@ class ConvNet():
         for i in range(len(layerTypes)):
             if layerTypes[i] == "c":
                 if layerInputs[i] == None:
-                    newLayer = ConvLayer()
+                    newLayer = ConvLayer(currentInputRows, currentInputCols)
                 else:
-                    newLayer = ConvLayer(*layerInputs[i])
+                    newLayer = ConvLayer(currentInputRows, currentInputCols*layerInputs[i])
                 self.layers.append(newLayer)
                 currentFeatureMaps *= newLayer.numFeatureMaps
-                currentInputRows += -newLayer.windowRows + 1
-                currentInputCols += -newLayer.windowCols + 1
+                currentInputRows = newLayer.outputRows
+                currentInputCols = newLayer.outputCols
             elif layerTypes[i] == "p":
                 if layerInputs[i] == None:
                     newLayer = PoolingLayer()
@@ -148,12 +151,21 @@ class ConvNet():
         else: return 0
     
     @staticmethod
-    def flatten(inputs):
+    def flatten(inputs, vertical=False):
         """Flattens the 2D numpy matrices taken in, and concatenates them"""
         output = inputs[0].flatten()
         for inputMat in inputs[1:]:
             output = np.append(output, inputMat)
+        if vertical:
+            output.shape = (len(output), 1)
         return output
+    
+    @staticmethod
+    def unflatten(inputMat, rows, cols):
+        outputs = np.split(inputMat, len(inputMat)/(rows*cols))
+        for mat in outputs:
+            mat.shape = (rows, cols)
+        return outputs
     
     def fullyConnectedOperation(self, layer, inputs):
         """Returns the output of the FCLayer when given the inputs"""
@@ -194,7 +206,7 @@ class ConvNet():
                         chosenCol = -1
                         for row in range(layer.windowRows):
                             for col in range(layer.windowCols):
-                                newVal = inputMat[overallRow+row, overallCol+col]
+                                newVal = inputMat[overallRow+row-1, overallCol+col-1]
                                 if newVal > maxVal: 
                                     maxVal = newVal
                                     chosenRow = row
@@ -212,7 +224,7 @@ class ConvNet():
         outputsL = []
         for layer in self.layers:
             if currentInputIsPicture and type(layer) is FCLayer:
-                inputs = ConvNet.flatten(inputs)
+                inputs = ConvNet.flatten(inputs, True)
                 currentInputIsPicture = False
             if type(layer) is FCLayer:
                 inputs = self.fullyConnectedOperation(layer, inputs)
@@ -233,7 +245,7 @@ class ConvNet():
             list -- the output of the output layer as a list
         """
 
-        output = self.feedForwardHelper(np.matrix(inputs).transpose())[-1].tolist()
+        output = self.feedForwardHelper([np.matrix(inputs)])[-1].tolist()
         return [i[0] for i in output]
     
     def maxPoolingError(self, dError, prevLayer, poolLayer):
@@ -246,32 +258,54 @@ class ConvNet():
                 loc += 1
         return newMat
     
+    def convLayerError(self, layerIndex, dError, inputs, outputsL):
+        currentLayer = self.layers[layerIndex]
+        for i in range(currentLayer.numFeatureMaps):
+            if layerIndex > 0:
+                weightsChange = signal.convolve2d(dError[i], self.reluFunc(np.rot90(outputsL[layerIndex-1], 2)))
+            else:
+                weightsChange = signal.convolve2d(dError[i], self.reluFunc(np.rot90(inputs, 2)))
+        if layerIndex > 0:
+            if currentLayer.actFunc == "relu":
+                dError = signal.convolve2d(dError, np.rot90(currentLayer.weights, 2)*self.dreluFunc(outputsL[layerIndex-1]))
+            elif currentLayer.actFunc == "sigmoid":
+                dError = signal.convolve2d(dError, np.rot90(currentLayer.weights, 2)*self.dsigFunc(outputsL[layerIndex-1]))
+        return dError
+    
+    def FCLayerError(self, layerIndex, dError, inputs, outputsL):
+        currentLayer = self.layers[layerIndex]
+        if layerIndex > 0:
+            weightsChange =  dError * outputsL[layerIndex-1].transpose()
+        else:
+            weightsChange = dError * inputs.transpose()
+        currentLayer.weights += weightsChange
+        currentLayer.biases += dError
+        if layerIndex > 0:
+            # the new error, which is also simply the gradient of the biases (multiplied by learningRate)
+            dError = np.multiply(self.layers[layerIndex].weights.transpose()*dError, 
+                self.dreluFunc(outputsL[layerIndex-1])) * self.learningRate
+        return dError
+    
     def backpropagate(self, inputs, expOutputs, outputsL):
         """Adjusts the weights and biases of the network with gradient descent"""
         # Starting error
-        dError = expOutputs - outputsL[-1]
+        dError = np.multiply(expOutputs-outputsL[-1], self.dreluFunc(outputsL[-1]))
+        errorIsFlat = True
 
         for layerIndex in range(len(self.layers)-1, -1, -1):
             currentLayer = self.layers[layerIndex]
+
             if type(currentLayer) is FCLayer:
-                gradient = np.multiply(dError, self.dsigFunc(outputsL[layerIndex])) * self.learningRate
-                if layerIndex-1 >= 0:
-                    deltas = gradient * outputsL[layerIndex-1].transpose()
-                else:
-                    deltas = gradient * inputs.transpose()
-                currentLayer.weights += deltas
-                currentLayer.biases += gradient
-                if layerIndex != 0:
-                    dError = currentLayer.weights.transpose() * dError
+                dError = self.FCLayerError(layerIndex, dError, inputs, outputsL)
+
             elif type(currentLayer) is ConvLayer:
-                pass
-                if layerIndex != 0:
-                    if currentLayer.actFunc == "relu":
-                        dError = signal.convolve2d(dError, np.rot90(currentLayer.weights, 2)*self.dreluFunc(outputsL[layerIndex-1]))
-                    elif currentLayer.actFunc == "sigmoid":
-                        dError = signal.convolve2d(dError, np.rot90(currentLayer.weights, 2)*self.dsigFunc(outputsL[layerIndex-1]))
+                if errorIsFlat:
+                    errorIsFlat = False
+                    dError = ConvNet.unflatten(dError, currentLayer.outputRows, currentLayer.outputCols)
+                dError = self.convLayerError(layerIndex, dError, inputs, outputsL)
+
             elif type(currentLayer) is PoolingLayer:
-                if layerIndex != 0:
+                if layerIndex > 0:
                     if currentLayer.actFunc == "max":
                         dError = self.maxPoolingError(dError, self.layers[layerIndex-1], currentLayer)
     
@@ -309,3 +343,8 @@ class ConvNet():
 
         for _ in range(numTrain):
             self.train(random.choice(examples))
+
+if __name__ == "__main__":
+    n = ConvNet(30, 30, .1, ["c", "p", "c", "p", "fc", "fc"],
+                            [None, None, None, None, 40, 5])
+    print(n.feedForward([[i for i in range(30)] for j in range(30)]))

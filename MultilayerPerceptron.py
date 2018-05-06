@@ -12,6 +12,8 @@ class Layer():
 
 class MultilayerPerceptron():
     def __init__(self, inputSize, learningRate, neurL):
+        self.sigFunc = np.vectorize(MultilayerPerceptron.sigmoid)
+        self.dsigFunc = np.vectorize(MultilayerPerceptron.dsigmoid)
         self.inputSize = inputSize
         self.learningRate = learningRate
         self.layers = [Layer(inputSize, neurL[0])]
@@ -27,11 +29,10 @@ class MultilayerPerceptron():
         return x * (1-x)
     
     def feedForwardHelper(self, inputs):
-        actFunc = np.vectorize(MultilayerPerceptron.sigmoid)
         currentOutput = inputs
         outputsL = []
         for layer in self.layers:
-            currentOutput = actFunc(layer.weights * currentOutput + layer.biases)
+            currentOutput = self.sigFunc(layer.weights * currentOutput + layer.biases)
             outputsL.append(currentOutput)
         return outputsL
     
@@ -46,21 +47,20 @@ class MultilayerPerceptron():
         else:
             inputs = np.matrix(inputsL[0]).transpose()
             expOutputs = np.matrix(inputsL[1]).transpose()
-        dsigFunc = np.vectorize(MultilayerPerceptron.dsigmoid)
         
         outputsL = self.feedForwardHelper(inputs)
-        dError = expOutputs - outputsL[-1]
+        dError = np.multiply(expOutputs-outputsL[-1], self.dsigFunc(outputsL[-1]))
 
         for layerIndex in range(len(self.layers)-1, -1, -1):
             if layerIndex != len(self.layers)-1:
-                dError = self.layers[layerIndex+1].weights.transpose() * dError
-            gradient = np.multiply(dError, dsigFunc(outputsL[layerIndex])) * self.learningRate
-            if layerIndex-1 >= 0:
-                deltas = gradient * outputsL[layerIndex-1].transpose()
+                # the new error, which is also simply the gradient of the biases (multiplied by learningRate)
+                dError = np.multiply(self.layers[layerIndex+1].weights.transpose()*dError, self.dsigFunc(outputsL[layerIndex])) * self.learningRate
+            if layerIndex > 0:
+                weightsChange =  dError * outputsL[layerIndex-1].transpose()
             else:
-                deltas = gradient * inputs.transpose()
-            self.layers[layerIndex].weights += deltas
-            self.layers[layerIndex].biases += gradient
+                weightsChange = dError * inputs.transpose()
+            self.layers[layerIndex].weights += weightsChange
+            self.layers[layerIndex].biases += dError
     
     def trainMultiple(self, examples, numTrain):
         for _ in range(numTrain):
